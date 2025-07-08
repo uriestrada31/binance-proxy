@@ -3,7 +3,7 @@ import cors from 'cors';
 import fetch from 'node-fetch';
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
@@ -13,5 +13,5 @@ app.get('/api/account', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Servidor activo en http://localhost:${port}`);
+  console.log(`Servidor activo en http://0.0.0.0:${port}`);
 });
