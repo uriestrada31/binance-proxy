@@ -1,38 +1,43 @@
-const express = require('express');
-const crypto = require('crypto');
-const fetch = require('node-fetch');
-const cors = require('cors');
+// server.js
+const express = require("express");
+const crypto = require("crypto");
+const axios = require("axios");
+require("dotenv").config();
 
 const app = express();
-app.use(cors());
+const port = 3000;
+
 app.use(express.json());
 
-const API_KEY = process.env.BINANCE_API_KEY;
-const SECRET_KEY = process.env.BINANCE_SECRET;
+// Función para firmar query strings con HMAC SHA256
+function sign(query) {
+  return crypto
+    .createHmac("sha256", process.env.BINANCE_SECRET)
+    .update(query)
+    .digest("hex");
+}
 
-app.post('/orden', async (req, res) => {
+// Ruta segura para consultar balances
+app.get("/api/account", async (req, res) => {
   try {
-    const { symbol, side, quantity } = req.body;
     const timestamp = Date.now();
-    const query = `symbol=${symbol}&side=${side}&type=MARKET&quantity=${quantity}&timestamp=${timestamp}`;
-    const signature = crypto.createHmac('sha256', SECRET_KEY).update(query).digest('hex');
-    const url = `https://api.binance.com/api/v3/order?${query}&signature=${signature}`;
+    const query = `timestamp=${timestamp}`;
+    const signature = sign(query);
+    const finalQuery = `${query}&signature=${signature}`;
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'X-MBX-APIKEY': API_KEY }
+    const response = await axios.get(`https://api.binance.com/api/v3/account?${finalQuery}`, {
+      headers: {
+        "X-MBX-APIKEY": process.env.BINANCE_API_KEY,
+      },
     });
 
-    const data = await response.json();
-    res.json(data);
+    res.json(response.data);
   } catch (error) {
-    res.status(500).json({ error: error.toString() });
+    console.error("Error al consultar Binance:", error.response?.data || error.message);
+    res.status(500).json({ error: "No se pudo obtener información de Binance" });
   }
 });
 
-app.get('/', (req, res) => {
-  res.send('🟢 Proxy Binance en línea');
+app.listen(port, () => {
+  console.log(`Servidor escuchando en http://localhost:${port}`);
 });
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Proxy corriendo en puerto ${PORT}`));
